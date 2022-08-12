@@ -1,0 +1,493 @@
+server.js
+
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const mongoose=require("mongoose");
+const app = express();
+
+app.use(express.json());
+app.use(cors());
+
+
+//Connection Start
+mongoose
+  .connect("mongodb://localhost:27017/inShortDB")
+  .then((result) => {
+    //true
+    console.log("Database Connected");
+  })
+  .catch((error) => {
+    //false
+    console.log("Unable to connect database");
+  });
+//Connection End
+// // sample for express server
+// app.use("/", (req, res, next) => {
+//   res.status(200).json({ success: true, data: "Welcome to express server" });
+// });
+
+const PORT = process.env.PORT || 1309; // port at which server listening
+
+// import routes
+let authRouter = require('./src/routes/auth.routes');
+let categoryRouter = require('./src/routes/category.routes');
+// import other routes BookMark Category News
+let newsRouters = require("./src/routes/news.routes");
+let bookmarkRouters = require("./src/routes/bookmark.routes");
+// define root routes.
+app.use('/authentication', authRouter);
+app.use('/category', categoryRouter);
+app.use("/bookmark",bookmarkRouters);
+app.use("/news",newsRouters);
+// define other routes BookMark Category News
+
+app.listen(
+  PORT,
+  console.log(`server started in ${process.env.NODE_ENV} mode at port ${PORT}`)
+);
+....................................................................................
+user.model.js
+
+const mongoose = require("mongoose");
+
+
+const User = new mongoose.Schema({
+    //add columns here
+    Name:{
+        type:String,
+    },
+    email:{
+        type:String,
+        
+        unique:true,
+        required:true
+    },
+    phone:{
+        type:Number,
+    },
+    Password:{
+        type:String,
+        required:true,
+    },
+    Username:{
+        type:String,
+      
+    },
+     Gender:{
+        type:String,
+    },
+    DOB:{
+        type:Number,
+    }
+});
+
+module.exports = mongoose.model("User", User);
+...................................................
+auth.controller.js
+
+//import user model here
+const User = require("../models/user.model");
+
+
+const register = (req, res) => {
+    //register api logic here
+    User.findOne({ email: req.body.email })
+    .then((userData) => {
+      if (userData) {
+        res.jsonp({ message: "user is already register" });
+      } else {
+        const userData = new User(req.body);
+        userData
+          .save()
+          .then((resData) => {
+            res.jsonp({
+              message: "User registered successfully",
+              status: true,
+              result: resData,
+            });
+          })
+          .catch((error) => {
+            console.log(error);
+            res.jsonp({ message: "Unable to register user", status: false });
+          });
+      }
+    })
+    .catch((error) => {
+      console.log("Unable to get User");
+    });
+};
+
+
+const login = (req, res) => {
+    //login api logic here
+    
+  User.findOne({ email: req.body.email })
+  .then((userData) => {
+    if (userData) {
+      console.log(userData.password);
+      console.log("Body ", req.body.password);
+      if (userData.password == req.body.password) {
+        res.jsonp({ message: "user logged in successfully" });
+      } else {
+        res.jsonp({ message: "Incorrect password" });
+      }
+    } else
+      res.jsonp({ message: "You are not register with us please register" });
+  })
+  .catch((error) => {
+    res.jsonp({ message: "Unable to find user" });
+  });
+};
+
+
+const AuthController = {
+    register,
+    login
+};
+
+module.exports = AuthController;
+........................................................................
+auth.routes.js
+
+const express = require("express");
+const router = express.Router();
+const AuthController = require('../controllers/auth.controller');
+
+// Create routes for auth here
+router.post('/login', AuthController.login);
+
+//create routes for register here
+router.post("/register",AuthController.register);
+module.exports = router;
+..................................................
+category.model.js
+// Category Model
+
+const mongoose=require("mongoose");
+const Category = new mongoose.Schema({
+    title:{
+        type:String,
+    },
+    imageURL:{
+        type:String,
+    },
+    description:{
+        type:String,
+    }
+});
+
+module.exports=mongoose.model("Category",Category);
+...........................................................................
+category.controller.js
+//import category model here
+const category = require("../models/category.model");
+
+const addCategory = (req, res) => {
+    //add category lopic api here
+    const CategoryData = new category(req.body);
+    CategoryData
+      .save()
+      .then((resData) => {
+        //resolve
+        res.jsonp({
+          message: "category added successfully",
+          status: true,
+          result: resData,
+        });
+      })
+      .catch((error) => {
+        // reject
+        res.jsonp({
+          message: "Unable to add category",
+          status: false,
+          
+        });
+      });
+  };
+  
+  const getAllCategory = (req, res) => {
+      //get category api logic here
+      category.find()
+      .then((resData) => {
+        //resolve
+        res.jsonp({
+          message: "category fetched successfully",
+          status: true,
+          result: resData,
+        });
+      })
+      .catch((error) => {
+        // reject
+        res.jsonp({
+          message: "Unable to fetch category",
+          status: false,
+        });
+      });
+};
+
+
+const CategoryController = {
+    addCategory,
+    getAllCategory
+};
+
+module.exports = CategoryController;
+.............................................................................
+category.routes.js
+
+const express = require("express");
+const router = express.Router();
+const CategoryController = require('../controllers/category.controller');
+
+// Create routes for category here
+router.post("/add",CategoryController.addCategory);
+router.get("/getAll",CategoryController.getAllCategory);
+module.exports = router;
+.......................................................................................
+news.model.js
+// News Model
+const mongoose=require("mongoose");
+
+const news = new mongoose.Schema({
+    title:{
+        type:String,
+    },
+    imageURL:{
+        type:String,
+    },
+    description:{
+        type:String,
+    },
+    categoryId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:"category"
+    }
+});
+module.exports=mongoose.model("news",news);
+................................................
+news.controller.js
+
+//import news model here
+const news = require("../models/news.model");
+const addNews = (req, res) => {
+    //add news api logic here
+    const newsData = new news(req.body);
+    newsData
+      .save()
+      .then((resData) => {
+        //resolve
+        res.jsonp({
+          message: "news added successfully",
+          status: true,
+          result: resData,
+        });
+      })
+      .catch((error) => {
+        // reject
+        res.jsonp({
+          message: "Unable to add news",
+          status: false,
+        });
+      });
+};
+
+const getAllNews = (req, res) => {
+    //add news api logic here
+    news.find()
+    .then((resData) => {
+      //resolve
+      res.jsonp({
+        message: "news fetched successfully",
+        status: true,
+        result: resData,
+      });
+    })
+    .catch((error) => {
+      // reject
+      res.jsonp({
+        message: "Unable to fetch news",
+        status: false,
+      });
+    });
+};
+
+const getNewsByCategoryId = (req, res) => {
+    //get news api logic here by CategoryId
+    news.findOne({ _id: req.params.categoryid })
+    .then((resData) => {
+      //resolve
+      res.jsonp({
+        message: "news fetched successfully",
+        status: true,
+        result: resData,
+      });
+    })
+    .catch((error) => {
+      // reject
+      res.jsonp({
+        message: "Unable to fetch news",
+        status: false,
+      });
+    });
+};
+
+
+const NewsController = {
+    addNews,
+    getAllNews,
+    getNewsByCategoryId
+};
+
+module.exports = NewsController;
+............................................................
+news.routes.js
+const express = require("express");
+const router = express.Router();
+const NewsController = require('../controllers/news.controller');
+
+// Create routes for news here
+router.post('/add',NewsController.addNews);
+router.get('/getAll',NewsController.getAllNews);
+router.get('/get/:categoryId',NewsController.getNewsByCategoryId);
+
+
+module.exports = router;
+....................................................................
+bookmark.model.js
+
+// Bookmark Model
+const mongoose = require("mongoose");
+const bookmark = new mongoose.Schema({
+    Userid: {
+                type: mongoose.Types.ObjectId,
+                ref:"User",
+        },
+    newsid:{ 
+        type: mongoose.Types.ObjectId,
+        ref:"news",
+        }
+});
+
+module.exports = mongoose.model("bookmark",bookmark);
+......................................................................
+bookmark.controller.js
+//import bookmark model here
+const Bookmark=require("../models/bookmark.model")
+const addBookMark = (req, res) => {
+    //add bookmark api logic here
+    const BookmarkData = new Bookmark(req.body);
+  BookmarkData
+    .save()
+    .then((resData) => {
+      //resolve
+      res.jsonp({
+        message: "category added successfully",
+        status: true,
+        result: resData,
+      });
+    })
+    .catch((error) => {
+      // reject
+      res.jsonp({
+        message: "Unable to add category",
+        status: false,
+      });
+    });
+};
+
+const getBookMarkByUserId = (req, res) => {
+    //get bookmark api logic here by userId
+     Bookmark.findOne({ _id: req.params.Userid })
+    .then((resData) => {
+      //resolve
+      res.jsonp({
+        message: "Bookmark fetched successfully",
+        status: true,
+        result: resData,
+      });
+    })
+    .catch((error) => {
+      // reject
+      res.jsonp({
+        message: "Unable to fetch Bookmark",
+        status: false,
+      });
+    });
+};
+
+const deleteBookMarkById = (req, res) => {
+    //get bookmark api logic here by _id
+    Bookmark.findOneAndDelete({_id:req.params.id})
+    .then((resData)=>{
+      res.jsonp({
+        message:"Bookmark Deleted Successfully",
+        status:true,
+      });
+    })
+    .catch((error)=>{
+      res.jsonp({
+        message:"unable to delete Bookmark",
+        status:false,
+      });
+    });
+};
+
+const BookMarkController = {
+    addBookMark,
+    getBookMarkByUserId,
+    deleteBookMarkById
+};
+
+module.exports = BookMarkController;
+......................................
+bookmark.routes.js
+
+const express = require("express");
+const router = express.Router();
+const BookMarkController = require('../controllers/bookmark.controller');
+const auth = require("../middleware/auth.middleware")
+
+// Create routes for Bookmark here
+router.post('/add',BookMarkController.addBookMark);
+
+//create route for getBookMarkByUserId
+router.get("/get/:userid",BookMarkController.getBookMarkByUserId);
+//create route for deleteBookMarkById
+router.get("/get/:id",BookMarkController.deleteBookMarkById);
+
+module.exports = router;
+
+
+....................................................
+     POSTMAN
+    localhost:1309/authentication/register
+{ 
+    "Name": "Jack",
+    "email":"Jack@gmail.com",
+    "phone":1954565123,
+    "Password":"Jack@123",
+    "Username":"Jack@123",
+    "Gender":"Male",
+    "DOB": 130901
+}    
+
+    localhost:1309/category/add
+{
+    "title":"sample",
+    "imageURL":"www.sample.com",
+    "description":"sample"
+}
+
+localhost:1309/news/add
+{
+    "title":"sample",
+    "imageURL":"www.sample.com",
+    "description":"sample",
+    "categoryId":"62f644454c4820d8494a3224"
+}
+localhost:1309/bookmark/add
+{
+   "UserId":"62f642ba4c4820d8494a3221",
+   "newsid":"62f644f24c4820d8494a3227"
+}
